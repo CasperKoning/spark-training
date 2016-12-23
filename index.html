@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+
+<title>Apache Spark</title>
+
+<meta name="description" content="Apache Spark">
+
+  <meta name="author" content="Casper Koning" />
+
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<link rel="stylesheet" href="css/reveal.css">
+  <link rel="stylesheet" href="css/theme/codestar.css" id="theme">
+
+<link href='font/fira-code/fira-code.css' rel='stylesheet' type='text/css'>
+<link href='font/conduit-itc-std/conduit-itc-std.css' rel='stylesheet' type='text/css'>
+<link href="css/kbdfun.css" rel="stylesheet">
+
+<!-- For syntax highlighting -->
+  <link rel="stylesheet" href="css/dracula.css">
+
+<!-- QR Code -->
+<script src="js/qrcode.js"></script>
+
+<!-- If the query includes 'print-pdf', use the PDF print sheet -->
+<script>
+  document.write( '<link rel="stylesheet" href="css/print/' +
+    ( window.location.search.match( /print-pdf/gi ) ? 'pdf' : 'paper' ) +
+    '.css" type="text/css" media="print">' );
+</script>
+
+<!--[if lt IE 9]>
+<script src="js/html5shiv.js"></script>
+<![endif]-->
+</head>
+
+<body>
+
+<img id="clouds1" src="img/clouds1.png" />
+<img id="clouds2" src="img/clouds2.png" />
+<img id="curves" src="img/curves.svg" />
+
+<div class="reveal">
+
+<!-- Any section element inside of this container is displayed as a slide -->
+<div class="slides">
+
+<!-- <div id="logo-background"></div>
+<img id="logo" class="plain logo-still" alt="CODESTAR" src="img/logo-star.svg" /> -->
+
+<section style="height: 100%;">
+<h1>Apache Spark</h1>
+<h3>Casper Koning</h3>
+<p>
+<h4>May 2016</h4>
+</p>
+<div id="credits">Built by <a href="">Showtime</a></div>
+</section>
+
+<section>
+<h1>Follow along</h1>
+<h2>Link to the slides</h2>
+<center>
+  <div id="qrcode"></div>
+  <pre id="qrlink"></pre>
+</center>
+<script type="text/javascript">
+var url = window.location.protocol + "//" + window.location.host + window.location.pathname;
+var qrcode = new QRCode(document.getElementById("qrcode"), {
+    text: url,
+    width: 384,
+    height: 384,
+    border: 2,
+    colorDark : "#10579E",
+    colorLight : "#ffffff"
+});
+document.getElementById("qrlink").textContent = url;
+</script>
+</section>
+
+<section>
+  <h1>Contents</h1>
+  <nav id="TOC">
+    <ul>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#spark-core">Spark Core</a></li>
+    <li><a href="#spark-streaming">Spark Streaming</a></li>
+    <li><a href="#spark-sql">Spark SQL</a></li>
+    <li><a href="#spark-mllib">Spark MLlib</a></li>
+    <li><a href="#spark-graphx">Spark GraphX</a></li>
+    <li><a href="#section-5">???</a></li>
+    </ul>
+  </nav>
+</section>
+
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<section id="what-is-apache-spark" class="level2">
+<h2>What is Apache Spark?</h2>
+<blockquote>
+<p>Apache Spark™ is a fast and general engine for large-scale data processing.</p>
+</blockquote>
+<center>
+<img src="img/spark-training/spark-stack.png" style="width: 60%" />
+</center>
+</section>
+<section id="why-apache-spark" class="level2">
+<h2>Why Apache Spark?</h2>
+<ul>
+<li>Cluster processing on commodity hardware embracing failure</li>
+<li>Great performance due to in memory processing</li>
+<li>Easy to use</li>
+<li>Rich set higher-level tools for data analysis/processing</li>
+</ul>
+<center>
+<img src="img/spark-training/logistic-regression.png" alt="Logistic regression in Hadoop and Spark" style="width: 30%" />
+</center>
+</section>
+<section id="how-apache-spark" class="level2">
+<h2>How Apache Spark?</h2>
+<ul>
+<li>First party support for multiple programming languages:
+<ul>
+<li>Scala (Spark source is also written in Scala)</li>
+<li>Java</li>
+<li>Python</li>
+<li>R</li>
+</ul></li>
+<li>Integrates with Hadoop ecosystem via YARN</li>
+<li>Has Mesos interoptability</li>
+<li>Can also be ran standalone</li>
+</ul>
+</section>
+</section>
+<section id="spark-core" class="level1">
+<h1>Spark Core</h1>
+<section id="spark-architecture-model" class="level2">
+<h2>Spark architecture model</h2>
+<ul>
+<li>Driver Program creates Tasks for the Workers and schedules them on a Worker</li>
+<li>Worker is a node in the cluster that runs processes called Executors</li>
+<li>Executors compute Tasks and communicate with the driver on the progress of said Tasks</li>
+<li>Cluster Manager takes care of resource allocation, i.e. tells the Driver on which Worker nodes Executors can be spawned</li>
+<li>see this <a href="http://spark.apache.org/docs/latest/cluster-overview.html#glossary">glossary</a> for a recap</li>
+</ul>
+<center>
+<img src="img/spark-training/spark-architecture.png" style="width: 40%" />
+</center>
+</section>
+<section id="the-spark-context" class="level2">
+<h2>The Spark Context</h2>
+<p>The first thing a Spark program must do is to create a SparkContext object, which tells Spark how to access a cluster, and functions as the gateway between the driver and the cluster.</p>
+<pre class="scala"><code>val sparkConf = new SparkConf().setAppName(&quot;hello-spark&quot;).setMaster(master)
+val sc = new SparkContext(sparkConf)</code></pre>
+<ul>
+<li>Only one <code>SparkContext</code> may be active per JVM. You must <code>stop()</code> the active <code>SparkContext</code> before creating a new one</li>
+<li>The <code>master</code> is a Spark, Mesos, YARN cluster URL</li>
+<li>Setting <code>master=&quot;local&quot;</code> runs in pseudo cluster mode</li>
+</ul>
+</section>
+<section id="rdds" class="level2">
+<h2>RDDs</h2>
+<blockquote>
+<p>A Resilient distributed dataset (RDD), is a fault-tolerant collection of elements that can be operated on in parallel.</p>
+</blockquote>
+<ul>
+<li>Distributed:
+<ul>
+<li>Data of a single collection is partitioned and computations are done on these partitions in a distributed fashion over multiple Workers.</li>
+</ul></li>
+<li>Fault tolerant:
+<ul>
+<li>Spark deals with failing machines by re-executing failed or slow Tasks on other Workers</li>
+<li>When a partition of an RDD is lost, it will simply be recomputed using the original source. It knows how because of the DAG</li>
+</ul></li>
+</ul>
+</section>
+<section id="creating-rdds" class="level2">
+<h2>Creating RDDs</h2>
+<pre class="scala"><code>val fromCollectionOnDriver = sc.parallelize(List(1,2,3))
+val fromLocalFileSystem = sc.textFile(&quot;/directory/*.txt&quot;)
+val fromHdfs = sc.textFile(&quot;hdfs:///directory/*.txt&quot;)
+val fromS3 = sc.textFile(&quot;s3a:///bucket/key-prefix/*.txt&quot;)
+val wholeTextFiles = sc.wholeTextFiles(&quot;/directory/*.txt&quot;)  // returned as filename-file key-value pairs
+val customInputFormat = sc.newAPIHadoopRDD[K, V, F &lt;: InputFormat[K, V]](...)</code></pre>
+</section>
+<section id="transformations-and-actions" class="level2">
+<h2>Transformations and Actions</h2>
+<blockquote>
+<p>RDDs support two types of operations: transformations, which create a new RDD from an existing one, and actions, which return a value to the driver after running a computation on the RDD.</p>
+</blockquote>
+<ul>
+<li><a href="http://spark.apache.org/docs/latest/programming-guide.html#transformations">transformations</a> are lazy</li>
+<li><a href="http://spark.apache.org/docs/latest/programming-guide.html">actions</a> force computation</li>
+<li>A pipeline of transformations and actions form a DAG</li>
+</ul>
+</section>
+<section id="dag" class="level2">
+<h2>DAG</h2>
+<center>
+<img src="img/spark-training/spark-dag.png" style="width: 60%" />
+</center>
+</section>
+<section id="example" class="level2">
+<h2>Example</h2>
+<pre class="scala"><code>val rdd = sc.textFile(&quot;/this-training.md&quot;)
+val rddCount = rdd.flatMap(line =&gt; line.split(&quot;\\s&quot;))
+   .map(word =&gt; word.toLowerCase)
+   .filter(word =&gt; word == &quot;rdd&quot; || word == &quot;rdds&quot;)
+   .count()
+println(&quot;I keep nagging about RDDs in this presentation, to be precise, &quot; +
+  &quot;I mention them &quot; + rddCount + &quot; times&quot;)</code></pre>
+</section>
+<section id="caching" class="level2">
+<h2>Caching</h2>
+<ul>
+<li>Sometimes you want to reuse an RDD. By default, this leads to a recomputation of the RDD. This is where caching comes in</li>
+<li>This supports multiple storage levels (<code>MEMORY_ONLY</code>, <code>MEMORY_AND_DISK</code>, <code>DISK_ONLY</code>, …)</li>
+<li>Can also tweak the number of replications of partitions</li>
+</ul>
+<pre class="scala"><code>val rdd = sc.textFile(&quot;/path&quot;)
+val nextRDD = rdd.map(line =&gt; line.toLowerCase).cache()
+println(nextRDD.filter(line =&gt; line.startsWith(&quot;a&quot;)).count())
+println(nextRDD.filter(line =&gt; line.startsWith(&quot;b&quot;)).count())</code></pre>
+</section>
+<section id="broadcastsaccumulators" class="level2">
+<h2>Broadcasts/Accumulators</h2>
+<ul>
+<li>Broadcast variable: read-only variable cached on each machine</li>
+<li>Accumulator: Write only variable, which can be updated with associative operations, and queried on the driver</li>
+</ul>
+<pre class="scala"><code>val broadcastVar = sc.broadcast(1)
+val accumulatorVar = sc.accumulator(0, &quot;count&quot;)
+val someRDD = sc. ...
+someRDD.map(value =&gt; value.toInt + broadcastVar.value)
+       .foreach(x =&gt; accumulatorVar += x)
+println(accumulatorVar.value)</code></pre>
+</section>
+<section id="developing" class="level2">
+<h2>Developing</h2>
+<ul>
+<li>Prototype online with <code>spark-shell</code></li>
+<li>Write production worthy code with tests, package to JAR and submit to cluster with <code>spark-submit</code></li>
+<li>Notebooks, e.g. <a href="github.com/andypetrella/spark-notebook/blob/master/details.md">spark-notebook</a>, <a href="https://zeppelin.incubator.apache.org">Zeppelin</a>, <a href="https://databricks.com/product/databricks">Databricks</a></li>
+<li>Drag and drop tools in development</li>
+</ul>
+</section>
+<section id="testing" class="level2">
+<h2>Testing</h2>
+<p>Holden Karau has an excellent tiny <a href="https://github.com/holdenk/spark-testing-base">library</a> for testing Spark applications. Most notably, this provides a <code>SharedSparkContext</code> trait which you can mix in with your test to provide an embedded Spark instance:</p>
+<pre class="scala"><code>class SampleTest extends FunSuite with SharedSparkContext {
+  test(&quot;test initializing spark context&quot;) {
+    val list = List(1, 2, 3, 4)
+    val rdd = sc.parallelize(list)
+
+    assert(rdd.count === list.length)
+  }
+}</code></pre>
+</section>
+<section id="code-time" class="level2">
+<h2>CODE TIME</h2>
+<ul>
+<li>Start up your <code>spark-shell</code>, and prototype your way to a working Spark program:
+<ul>
+<li>Provided is a file containing all works of Shakespeare (<code>shakespeare.txt</code>)</li>
+<li>Perform a word count on the texts, i.e. for every unique word, provide a count of how many times it occurs</li>
+<li>How many words are used only once?</li>
+<li>Which word is used most?</li>
+<li>Try leaving out whitespace and the license, how should you approach this?</li>
+</ul></li>
+<li>Migrate working pieces of code to a Spark program in your IDE (<a href="https://github.com/CasperKoning/spark-template">template project</a>)</li>
+<li>Write some tests</li>
+<li>Assemble your JAR, <code>sbt clean assembly</code></li>
+<li>Submit your JAR to a local pseudocluster using <code>spark-submit</code></li>
+</ul>
+</section>
+<section id="spark-2.0" class="level2">
+<h2>Spark 2.0</h2>
+<ul>
+<li>Starting from Spark 2.0, a new entrypoint is preferred, this is <code>SparkSession</code>, and it is usually used to create a <code>Dataset</code> instead of <code>RDD</code></li>
+</ul>
+<pre><code>SparkSession.builder()
+     .master(&quot;local&quot;)
+     .appName(&quot;Word Count&quot;)
+     .config(&quot;spark.some.config.option&quot;, &quot;some-value&quot;).
+     .getOrCreate()</code></pre>
+</section>
+<section id="configuring-a-job" class="level2">
+<h2>Configuring a job</h2>
+<ul>
+<li>Config can be set on <code>SparkConf</code> or <code>SparkSession.builder().config</code></li>
+<li>Config can be passed on as CLI args to <code>spark-submit</code> or <code>spark-shell</code></li>
+<li>Config can be provided with <code>conf/spark-defaults.conf</code> file</li>
+<li>All <a href="http://spark.apache.org/docs/latest/configuration.html#available-properties">available properties</a></li>
+</ul>
+</section>
+<section id="spark-standalone-cluster" class="level2">
+<h2>Spark standalone cluster</h2>
+<ul>
+<li>Start spark master with <code>sbin/start-master.sh</code>, this is the Spark resource manager</li>
+<li>Start spark slaves with <code>sbin/start-slave.sh &lt;sparkMaster url&gt;</code>
+<ul>
+<li>see logs after executing <code>start-master</code> for proper master url</li>
+</ul></li>
+<li>Additionally, you can call <code>sbin/start-all.sh</code> from the master node, provided all nodes have the right <code>conf/spark-env.sh</code> file and the master has the right <code>conf/slaves</code> file</li>
+</ul>
+</section>
+<section id="execution-modes" class="level2">
+<h2>Execution modes</h2>
+<ul>
+<li>Application can run in both client mode and cluster mode</li>
+<li>Configurable via <code>--deploy-mode</code></li>
+<li>During client mode, the driver program runs on the machine submitting the application</li>
+<li>During cluster mode, the driver program also runs within the cluster</li>
+<li>Suitable mode depends on your needs, and also the closeness to the cluster of the machine submitting the application</li>
+</ul>
+</section>
+<section id="monitoring" class="level2">
+<h2>Monitoring</h2>
+<ul>
+<li>Spark UI
+<ul>
+<li>Only during the lifetime of the application</li>
+<li>Available on <code>&lt;driver&gt;:4040</code></li>
+</ul></li>
+<li>Spark History Server
+<ul>
+<li>Uses application logs</li>
+<li>Start with <code>sbin/start-history-server.sh</code></li>
+<li>Available on <code>&lt;server&gt;:18080</code></li>
+</ul></li>
+</ul>
+</section>
+<section id="code-time-1" class="level2">
+<h2>CODE TIME</h2>
+<ul>
+<li>Start up a standalone spark cluster on your machine</li>
+<li>Submit your previous application to this cluster in cluster mode</li>
+<li>Monitor your application</li>
+</ul>
+</section>
+<section id="code-time-2" class="level2">
+<h2>CODE TIME</h2>
+<ul>
+<li>Create a new program, which runs at least the following:</li>
+</ul>
+<pre><code>class A
+sc.paralelize(List(new A)).count()</code></pre>
+<ul>
+<li>Change your program to use <code>SparkSession</code> instead of <code>SparkContext</code></li>
+<li>Now, run</li>
+</ul>
+<pre><code>class A
+spark.createDataset(List(new A)).count()</code></pre>
+</section>
+</section>
+<section id="spark-streaming" class="level1">
+<h1>Spark Streaming</h1>
+<section id="architecture" class="level2">
+<h2>Architecture</h2>
+<center>
+<img src="img/spark-training/streaming-arch.png" alt="streaming-arch" style="background: white; width: 60%" />
+</center>
+<center>
+<img src="img/spark-training/streaming-flow.png" alt="streaming-flow" style="background: white; width: 60%" />
+</center>
+</section>
+<section id="dstream" class="level2">
+<h2>DStream</h2>
+<blockquote>
+<p><em>DStream</em> is the basic abstraction provided by Spark Streaming. It represents a <em>continuous stream</em> of data […] Internally, a DStream is represented by a <em>continuous series of RDDs</em>.</p>
+</blockquote>
+</section>
+<section id="example-1" class="level2">
+<h2>Example</h2>
+<pre class="scala"><code>val ssc = new StreamingContext(sc, Seconds(2))
+val dstream = ssc.socketTextStream(&quot;localhost&quot;,1234)
+
+dstream
+  .map(line =&gt; toRelevantEntity(line))
+  .filter(entity =&gt; entity.isUseful())
+  .foreachRDD{rdd =&gt;
+    rdd.foreach(entity =&gt; entity.executeSuperImportantSideEffect())
+  }
+
+ssc.start()
+ssc.awaitTermination()
+ssc.stop()</code></pre>
+</section>
+<section id="operations-on-dstreams-docs" class="level2">
+<h2>Operations on DStreams <a href="http://spark.apache.org/docs/latest/streaming-programming-guide.html#window-operations">docs</a></h2>
+<p>When working with DStreams, you construct a pipeline of actions/transformations on the underlying RDDs of the stream.</p>
+<center>
+<img src="img/spark-training/streaming-dstream-ops.png" alt="streaming-dstream-ops" style="background: white;" />
+</center>
+</section>
+<section id="output-operations-on-dstreams-docs" class="level2">
+<h2>Output operations on DStreams <a href="http://spark.apache.org/docs/latest/streaming-programming-guide.html#output-operations-on-dstreams">docs</a></h2>
+<center>
+<img src="img/spark-training/rtfm.jpg" alt="rtfm" />
+</center>
+</section>
+<section id="code-time-3" class="level2">
+<h2>CODE TIME</h2>
+<p>Set up a simple Spark Streaming program that echoes a word count for every batch of text it receives, every second.</p>
+<p>Provided</p>
+<pre class="scala"><code>$ spark-shell
+val ssc = new StreamingContext(sc, ???)
+val dstream = ssc.socketTextStream(&quot;localhost&quot;,1234)
+...
+ssc.start()
+ssc.awaitTermination()
+ssc.stop()</code></pre>
+<p>we can (on Linux / OSX) use Netcat, <code>nc</code>, to send data:</p>
+<pre class="bash"><code>nc -lk 1234
+hello world</code></pre>
+</section>
+<section id="windowing-operations-on-dstreams-docs" class="level2">
+<h2>Windowing operations on DStreams <a href="http://spark.apache.org/docs/latest/streaming-programming-guide.html#window-operations">docs</a></h2>
+<center>
+<img src="img/spark-training/streaming-dstream-window.png" alt="streaming-dstream-window" style="background: white; width: 60%" />
+</center>
+<ul>
+<li>Window length: The duration of the window.</li>
+<li>Sliding interval: The interval at which the window operation is performed.</li>
+<li>These two parameters must be multiples of the batch interval.</li>
+</ul>
+</section>
+<section id="code-time-4" class="level2">
+<h2>CODE TIME</h2>
+<p>Change your previous program to aggregate all the words from the previous 5 seconds, and output this aggregate every two seconds.</p>
+</section>
+<section id="fault-tolerance" class="level2">
+<h2>Fault tolerance</h2>
+<blockquote>
+<p>A streaming application must operate 24/7 and hence must be resilient to failures unrelated to the application logic. For this to be possible, Spark Streaming needs to <em>checkpoint</em> enough information to a fault- tolerant storage system such that it can recover from failures.</p>
+</blockquote>
+</section>
+<section id="checkpointing" class="level2">
+<h2>Checkpointing</h2>
+<ul>
+<li>Metadata Checkpointing <img src="img/spark-training/streaming-fault-tolerance.png" style="background: white; width: 35%; float:right" />
+<ul>
+<li>Configuration</li>
+<li>DStream operations</li>
+<li>Incomplete batches</li>
+</ul></li>
+<li>Data Checkpointing
+<ul>
+<li>Saving of the generated RDDs to reliable storage […] intermediate RDDs of stateful transformations are periodically checkpointed to reliable storage to cut off the dependency chains.</li>
+</ul></li>
+</ul>
+</section>
+<section id="turning-on-checkpointing" class="level2">
+<h2>Turning on checkpointing</h2>
+<pre class="scala"><code>def functionToCreateCtxt(): StreamingContext = {
+    val ssc = new StreamingContext(...)   // new context
+    val lines = ssc.socketTextStream(...) // create DStreams
+    ...
+    ssc.checkpoint(checkpointDir)   // set checkpoint directory
+    ssc
+}
+
+val context = StreamingContext.getOrCreate(checkpointDir, functionToCreateCtxt _)
+
+context.start()
+context.awaitTermination()
+context.stop()</code></pre>
+<p>Create DStreams inside the method: <a href="https://issues.apache.org/jira/browse/SPARK-13316">SPARK-13316</a></p>
+</section>
+<section id="stateful-operations" class="level2">
+<h2>Stateful operations</h2>
+<p>Two methods of interacting with state for <code>PairDStreams</code> (<code>DStream[(K,V)]</code>):</p>
+<pre><code>updateStateByKey()
+mapWithState()</code></pre>
+<p>The <code>mapWithState()</code> method should be much more <a href="https://databricks.com/blog/2016/02/01/faster-stateful-stream-processing-in-apache-spark-streaming.html">performant</a>, and also allows for more complex functionality but can be somewhat harder to implement (imo).</p>
+</section>
+<section id="code-time-5" class="level2">
+<h2>CODE TIME</h2>
+<ul>
+<li>Change your streaming word count program to actually have state</li>
+<li>Kill your application during operation, and see if you can get it back up and running without loss of state</li>
+</ul>
+<p>(You no longer need window operations for this)</p>
+</section>
+<section id="receivers" class="level2">
+<h2>Receivers</h2>
+<blockquote>
+<p>Every input DStream (except file stream) is associated with a <strong>Receiver</strong> object which receives the data from a source and stores it in Spark’s memory for processing.</p>
+</blockquote>
+</section>
+<section id="basic-sources" class="level2">
+<h2>Basic Sources</h2>
+<ul>
+<li>Socket Streams</li>
+<li>File Streams</li>
+<li>Custom Actor Streams</li>
+<li>Queue RDD Streams (testing)</li>
+</ul>
+<pre class="scala"><code>ssc.socketTextStream(host,port)
+ssc.fileStream[KeyClass, ValueClass, InputFormatClass](dataDir)
+ssc.actorStream(actorProps, actor-name)
+ssc.queueStream(queueOfRDDs)</code></pre>
+</section>
+<section id="advanced-sources" class="level2">
+<h2>Advanced Sources</h2>
+<ul>
+<li>Kafka: spark-streaming-kafka</li>
+<li>Flume: spark-streaming-flume</li>
+<li>Kinesis: spark-streaming-kinesis</li>
+<li>Twitter: spark-streaming-twitter</li>
+<li>ZeroMQ: spark-streaming-zeromq</li>
+<li>MQTT: spark-streaming-mqtt</li>
+</ul>
+<p>Require linking with external libs, include in Uberjar</p>
+</section>
+<section id="custom-sources" class="level2">
+<h2>Custom Sources</h2>
+<pre class="scala"><code>class MyReceiver(storageLevel: StorageLevel) extends NetworkReceiver[String](storageLevel) {
+    def onStart() {
+    // Setup stuff (start threads, open sockets, etc.)
+    // Must start new thread to receive data, as onStart() must be
+    // non-blocking.
+    // Call store(...) in those threads to store received data into
+    // Spark&#39;s memory.
+    // Call stop(...), restart(...) or reportError(...) on any thread
+    // based on how different errors needs to be handled.
+    }
+
+    def onStop() {
+    // Cleanup stuff (stop threads, close sockets, etc.) to stop
+    // receiving data.
+    }
+}</code></pre>
+</section>
+</section>
+<section id="spark-sql" class="level1">
+<h1>Spark SQL</h1>
+<section id="overview" class="level2">
+<h2>Overview</h2>
+<blockquote>
+<p>Spark SQL is a Spark module for structured data processing. […] The interfaces provided by Spark SQL provide Spark with more information about the structure of both the data and the computation being performed. Internally, Spark SQL uses this extra information to perform extra optimizations.</p>
+</blockquote>
+<center>
+<img src="img/spark-training/spark-sql-architecture.png" alt="spark-sql-architecture" style="background: white; width: 90%;" />
+</center>
+</section>
+<section id="dataframe-and-dataset" class="level2">
+<h2>Dataframe and Dataset</h2>
+<blockquote>
+<p>A DataFrame is a distributed collection of data organized into named columns. It is conceptually equivalent to a table in a relational database or a data frame in R/Python, but with richer optimizations under the hood.</p>
+</blockquote>
+<blockquote>
+<p>A Dataset is a new experimental interface added in Spark 1.6 that tries to provide the benefits of RDDs (strong typing, ability to use powerful lambda functions) with the benefits of Spark SQL’s optimized execution engine.</p>
+</blockquote>
+</section>
+<section id="example-2" class="level2">
+<h2>Example</h2>
+<pre class="scala"><code>val sc: SparkContext // An existing SparkContext.
+val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+
+val df = sqlContext.read.json(&quot;/some_path/people.json&quot;)
+df.show()
+df.printSchema()
+df.select(&quot;name&quot;).show()
+df.select(df(&quot;name&quot;), df(&quot;age&quot;) + 1).show()
+df.select($&quot;name&quot;, $&quot;age&quot; + 1).show()
+df.filter(df(&quot;age&quot;) &gt; 21).show()
+df.groupBy(&quot;age&quot;).count().show()
+df.select(avg(&quot;age&quot;)).show()</code></pre>
+</section>
+<section id="spark-sql-operations" class="level2">
+<h2>Spark SQL operations</h2>
+<ul>
+<li><a href="http://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.sql.Dataset">Dataset docs</a>, for operations on Datasets</li>
+<li><a href="http://spark.apache.org/docs/latest/api/scala/index.html#org.apache.spark.sql.functions$">org.apache.spark.sql.functions</a>, for operations on Columns
+</li></li>
+<li>SQL queries for registered tables:</li>
+</ul>
+<pre><code>val data = ???
+data.createOrReplaceTempView(&quot;table&quot;)
+val df = sqlContext.sql(&quot;SELECT * FROM table&quot;)`</code></pre>
+</section>
+<section id="loading-and-saving-data" class="level2">
+<h2>Loading and Saving data</h2>
+<ol type="1">
+<li>Default format is parquet</li>
+<li><p>Can be configured:</p>
+<pre class="scala"><code>df.read.format(&quot;json&quot;).load(&quot;input_directory/file.json&quot;)
+df.write.format(&quot;json&quot;).save(&quot;output_directory/file.json&quot;)</code></pre></li>
+<li><p>Also supports JDBC</p>
+<pre class="scala"><code>val jdbcDF = sqlContext.read.format(&quot;jdbc&quot;).options(
+        Map(&quot;url&quot; -&gt; &quot;jdbc:postgresql:dbserver&quot;,
+        &quot;dbtable&quot; -&gt; &quot;schema.tablename&quot;)
+      ).load()</code></pre></li>
+<li>Out of the box Hive with HQL via own DSL</li>
+<li><p>Other datasources via third party plugins</p></li>
+</ol>
+</section>
+<section id="code-time-6" class="level2">
+<h2>CODE TIME</h2>
+<p>Start your spark shell with an aditional package for reading CSV:</p>
+<pre class="bash"><code>spark-shell --packages com.databricks:spark-csv_2.10:1.4.0</code></pre>
+<ul>
+<li>Some JSON with data on persons is provided. Load in this data, and print its schema</li>
+<li>Select the persons who are active and older than 21, and print only their name and address</li>
+<li>Count the number of persons without friends. For the ones that do have friends, print their names, and their friends</li>
+<li>Some CSV is provided with hashes belonging to each person, indexed by <code>_id</code>. Load in this data and join it with the previous data</li>
+<li>Write the result as CSV to disk</li>
+</ul>
+</section>
+</section>
+<section id="spark-mllib" class="level1">
+<h1>Spark MLlib</h1>
+<section id="machine-learning-basics" class="level2">
+<h2>Machine Learning Basics</h2>
+<figure>
+<img src="img/spark-training/machineLearningPipeline.png" alt="Typical steps in a machine learning pipeline" /><figcaption>Typical steps in a machine learning pipeline</figcaption>
+</figure>
+</section>
+<section id="gather-and-prepare-data" class="level2">
+<h2>Gather and prepare data</h2>
+<blockquote>
+<p>In Data Science, 80% of time is spent on data preparation, and the other 20% is spent on complaining about the need to prepare data.</p>
+</blockquote>
+</section>
+<section id="select-features" class="level2">
+<h2>Select features</h2>
+<blockquote>
+<p>In machine learning and statistics, feature selection, also known as variable selection, attribute selection or variable subset selection, is the process of selecting a subset of relevant features (variables, predictors) for use in model construction</p>
+</blockquote>
+<ul>
+<li>Current age for predicting the probability of ending up in hospital in the coming five years.</li>
+<li><span class="math inline">\(\frac{\text{weight}}{\text{length}^2}\)</span> for predicting percentage of body fat.</li>
+<li>You fall in category <span class="math inline">\(A\)</span>, so you are very likely to do <span class="math inline">\(Z\)</span>.</li>
+</ul>
+</section>
+<section id="train-a-model" class="level2">
+<h2>Train a model</h2>
+<p><img src="img/spark-training/modelgraphs1.png" alt="Model examples" style="float:left;  width: 60%" /> <img src="img/spark-training/J48_iris.jpg" alt="Iris decision tree" style="float:right;  width: 35%" /></p>
+</section>
+<section id="select-the-best-model" class="level2">
+<h2>Select the best model</h2>
+<ul>
+<li>Train model with different parameters, compare with some metric <img src="img/spark-training/model-selection.png" alt="Model selection" style="float: right" /></li>
+<li>Model might be too complex, or too simple</li>
+<li>Evaluate model on some validation set and use cross-validation to find an appropriate model</li>
+</ul>
+</section>
+<section id="predict" class="level2">
+<h2>Predict</h2>
+<figure>
+<img src="img/spark-training/xkcdFlowChart.png" />
+</figure>
+</section>
+<section id="mllib-programming-absractions" class="level2">
+<h2>MLlib Programming absractions</h2>
+<ul>
+<li>(Dense/Sparse) Vector</li>
+<li>LabeledPoint</li>
+<li>Matrix</li>
+<li>Rating</li>
+<li>Model classes</li>
+<li>Pipeline API</li>
+</ul>
+</section>
+<section id="densesparse-vector" class="level2">
+<h2>(Dense/Sparse) Vector</h2>
+<ul>
+<li>A mathematical vector containing numbers</li>
+<li>Both dense and sparse vectors</li>
+<li>Constructed via <code>mllib.linalg.Vectors</code></li>
+<li>Do not provide arithmetic operations</li>
+</ul>
+<pre class="scala"><code>val denseVec1 = Vectors.dense(1.0, 2.0, 3.0)
+val denseVec2 = Vectors.dense(Array(1.0,2.0,3.0))
+val sparseVec = Vectors.sparse(4, Array(0,2), Array(1.0, 2.0))</code></pre>
+</section>
+<section id="labeledpoint" class="level2">
+<h2>LabeledPoint</h2>
+<blockquote>
+<p>LabeledPoint: A labeled data point for supervised learning algorithms such as classification and regression. Includes a feature vector and a label.</p>
+</blockquote>
+<pre class="scala"><code>val lp = LabeledPoint(1,Vectors.dense(3.14,1.68,1.41))</code></pre>
+</section>
+<section id="matrix" class="level2">
+<h2>Matrix</h2>
+<ul>
+<li>Integer typed row and column indices</li>
+<li>Double values</li>
+<li>Different implementations for distribution purposes (RowMatrix, BlockMatric, CoordinateMatrix, …)</li>
+<li>Dense and sparse variants</li>
+</ul>
+<figure>
+<img src="img/spark-training/latex_matrix.png" />
+</figure>
+</section>
+<section id="rating" class="level2">
+<h2>Rating</h2>
+<blockquote>
+<p>Rating: A rating of a product by a user, used in the <code>mllib.recommendation</code> package for product recommendation.</p>
+</blockquote>
+<p>Nothing more than a</p>
+<pre class="scala"><code>case class Rating(user: Long, item: Long, rating: Double)</code></pre>
+</section>
+<section id="model-classes" class="level2">
+<h2>Model classes</h2>
+<ul>
+<li>Work on RDD[Vector], RDD<a href="#labeledpoint">LabeledPoint</a>, etc.</li>
+<li>Often follow naming pattern: <problem>With<algorithm>, e.g. LinearRegressionWithSGD.</li>
+<li>Either the model follows a builder pattern and has a run() method, or it has static train() and predict() methods:</li>
+</ul>
+<pre class="scala"><code>val points: RDD[LabeledPoint] = // ...
+val lr = new LinearRegressionWithSGD()
+  .setNumIterations(200)
+  .setIntercept(true)
+val model = lr.run(points)</code></pre>
+<pre class="scala"><code>val model = DecisionTree.trainClassifier(
+  input = data,
+  numClasses = 5,
+  ...)</code></pre>
+</section>
+<section id="pipeline-api" class="level2">
+<h2>Pipeline api</h2>
+<ul>
+<li>Advanced API for chaining machine learning operations in one workflow</li>
+<li>Uses the more advanced DataFrame features compared to RDD’s of simple MLlib abstractions</li>
+<li>Possible pipeline: Automated feature selection -&gt; Model training -&gt; Validation -&gt; Model selection -&gt; Prediction</li>
+</ul>
+<figure>
+<img src="img/spark-training/machineLearningPipeline.png" style="width: 50%" />
+</figure>
+</section>
+<section id="code-time-7" class="level2">
+<h2>CODE TIME</h2>
+<ul>
+<li>Provided is an arbitrary dataset</li>
+<li>Train a regression model for the first variable, with all other variables as independent variables.</li>
+<li>Evaluate your model!</li>
+</ul>
+</section>
+<section id="code-time-8" class="level2">
+<h2>CODE TIME</h2>
+<ul>
+<li>42,000 drawing of digits</li>
+<li>Given a drawing, predict the written digit</li>
+<li>Classification problem</li>
+<li>Use Decision Tree approach</li>
+</ul>
+<center>
+<img src="img/spark-training/digitData.png" style="width: 300px" /> <img src="img/spark-training/digit.png" style="width: 265px" />
+</center>
+</section>
+</section>
+<section id="spark-graphx" class="level1">
+<h1>Spark GraphX</h1>
+<section id="fundamentals" class="level2">
+<h2>Fundamentals</h2>
+<blockquote>
+<p>In the most common sense of the term, a graph is an ordered pair <span class="math inline">\(G=(V,E)\)</span> compromising a set <span class="math inline">\(V\)</span> of vertices together with a set <span class="math inline">\(E\)</span> of edges, which are 2-element subsets of <span class="math inline">\(V\)</span>.</p>
+</blockquote>
+<ul>
+<li>Graphs are all about relationships between objects</li>
+<li>Vertices are the objects we ware interested in</li>
+<li>Edges describe the relationship between two vertices</li>
+<li>The alternate way of looking at data, allows us to ask different questions much easier. These questions are typically about relationships.</li>
+</ul>
+</section>
+<section id="section" class="level2">
+<h2></h2>
+<figure>
+<img src="img/spark-training/graph.png" style="width: 50%;" />
+</figure>
+</section>
+<section id="programming-abstractions-in-graphx" class="level2">
+<h2>Programming abstractions in GraphX</h2>
+<pre class="scala"><code>class Graph[VD, ED]{
+  val vertices: VertexRDD[VD]
+  val edges: EdgeRDD[ED]
+}
+type VertexRDD[VD] = RDD[(VertexID, VD)]
+type EdgeRDD[ED] = RDD[Edge[ED]]
+type Edge[ED] = (VertexID, VertexID, ED)
+type VertexID = Long</code></pre>
+</section>
+<section id="edgetriplet" class="level2">
+<h2>EdgeTriplet</h2>
+<figure>
+<img src="img/spark-training/triplet.png" />
+</figure>
+</section>
+<section id="constructing-a-graph" class="level2">
+<h2>Constructing a Graph</h2>
+<p>There are several options for creating a Graph in GraphX:</p>
+<ul>
+<li><code>Graph.apply(vertices, edges)</code></li>
+<li><code>Graph.fromEdges()</code> or <code>Graph.fromEdgeTuples()</code></li>
+<li><code>GraphLoader.edgeListFile()</code></li>
+</ul>
+</section>
+<section id="example-maven-dependencies" class="level2">
+<h2>Example: Maven Dependencies</h2>
+<figure>
+<img src="img/spark-training/maven-deps-ni-labels.png" alt="source" style="width: 40%" /><figcaption><a href="https://github.com/ogirardot/meta-deps">source</a></figcaption>
+</figure>
+</section>
+<section id="data" class="level2">
+<h2>Data</h2>
+<ul>
+<li>Directed graph of Maven dependencies</li>
+<li>Data structure:</li>
+</ul>
+<figure>
+<img src="img/spark-training/maven-deps-data.png" style="width: 75%" />
+</figure>
+</section>
+<section id="section-1" class="level2">
+<h2></h2>
+<figure>
+<img src="img/spark-training/mavenEntry.png" />
+</figure>
+</section>
+<section id="section-2" class="level2">
+<h2></h2>
+<figure>
+<img src="img/spark-training/rowToTuple.png" />
+</figure>
+</section>
+<section id="section-3" class="level2">
+<h2></h2>
+<figure>
+<img src="img/spark-training/appendWithUniqueId.png" />
+</figure>
+</section>
+<section id="section-4" class="level2">
+<h2></h2>
+<figure>
+<img src="img/spark-training/establishRelationships.png" />
+</figure>
+</section>
+</section>
+<section id="section-5" class="level1">
+<h1>???</h1>
+<br><br><br>
+<p class="big">
+Thank you!!
+</p>
+</section>
+</div>
+</div>
+
+<script src="js/head.min.js"></script>
+<script src="js/reveal.js"></script>
+
+<script>
+  function animateLogo() {
+    var background = document.getElementById("logo-background");
+    var logo = document.getElementById("logo");
+
+    logo.src = "img/logo-animated.svg";
+    logo.className = "plain logo-corner";
+    background.className += " background-fade-out";
+
+    setTimeout(function() {
+      background.parentElement.removeChild(background);
+    }, 5500);
+  }
+
+  function initReveal() {
+    // Full list of configuration options available here:
+    // https://github.com/hakimel/reveal.js#configuration
+    Reveal.initialize({
+      width: 1280,
+      height: 720,
+      margin: 0.15,
+      controls: true,
+      progress: true,
+      history: true,
+      center: false,
+      keyboard: false,
+
+    // available themes are in /css/theme
+          theme: Reveal.getQueryHash().theme || 'codestar',
+    
+    // default/cube/page/concave/zoom/linear/fade/none
+          transition: Reveal.getQueryHash().transition || 'linear',
+    
+    math: {
+      mathjax: 'js/mathjax/MathJax.js',
+      config: 'TeX-MML-AM_SVG'  // See http://docs.mathjax.org/en/latest/config-files.html
+    },
+
+    // Optional libraries used to extend on reveal.js
+    dependencies: [
+      { src: 'js/classList.js', condition: function() { return !document.body.classList; } },
+      { src: 'plugin/markdown/showdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+      { src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+      { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+      { src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+      { src: 'plugin/math/math.js', async: true },
+      { src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+      // { src: 'plugin/remotes/remotes.js', async: true, condition: function() { return !!document.body.classList; } }
+    ]
+    });
+  }
+
+  function inIframe () {
+    try {
+      return window.self !== window.top;
+    } catch (e) {
+      return true;
+    }
+  }
+
+
+  var started = false;
+  initReveal();
+
+  // Maybe also if hash present?
+  if (inIframe()) {
+    var background = document.getElementById("logo-background");
+    var logo = document.getElementById("logo");
+    background.parentElement.removeChild(background);
+    logo.parentElement.removeChild(logo);
+  } else {
+    var logo = document.getElementById("logo")
+    if(logo !== null) {
+      logo.style.display = "block";
+      document.addEventListener('keypress', function (e) {
+        if (e.keyCode === 0 || e.keyCode === 32) {
+          e.preventDefault();
+          if (!started) {
+            Reveal.configure({ keyboard: true });
+            animateLogo();
+            started = true;
+          }
+        }
+      }, false);
+    } else {
+      Reveal.configure({ keyboard: true });
+    }
+  }
+
+</script>
+
+</body>
+</html>
